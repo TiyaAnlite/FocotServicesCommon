@@ -13,9 +13,9 @@ type NatsConfig struct {
 }
 
 type NatsHelper struct {
-	nc   *nats.Conn
-	ec   *nats.EncodedConn
-	js   nats.JetStreamContext
+	Nc   *nats.Conn
+	Ec   *nats.EncodedConn
+	Js   nats.JetStreamContext
 	subs []*nats.Subscription
 
 	// 普通消息发送
@@ -60,7 +60,7 @@ func (helper *NatsHelper) Open(cfg NatsConfig) error {
 	)
 
 	var err error
-	helper.nc, err = nats.Connect(cfg.NatsUrl, opts...)
+	helper.Nc, err = nats.Connect(cfg.NatsUrl, opts...)
 	if err != nil {
 		return err
 	}
@@ -68,16 +68,16 @@ func (helper *NatsHelper) Open(cfg NatsConfig) error {
 }
 
 func (helper *NatsHelper) onConnected() error {
-	helper.Publish = helper.nc.Publish
-	helper.Request = helper.nc.Request
+	helper.Publish = helper.Nc.Publish
+	helper.Request = helper.Nc.Request
 	var err error
-	helper.ec, err = nats.NewEncodedConn(helper.nc, nats.JSON_ENCODER)
+	helper.Ec, err = nats.NewEncodedConn(helper.Nc, nats.JSON_ENCODER)
 	if err != nil {
 		return err
 	}
-	helper.PublishJson = helper.ec.Publish
-	helper.RequestJson = helper.ec.Request
-	helper.js, err = helper.nc.JetStream()
+	helper.PublishJson = helper.Ec.Publish
+	helper.RequestJson = helper.Ec.Request
+	helper.Js, err = helper.Nc.JetStream()
 	if err != nil {
 		return err
 	}
@@ -86,18 +86,28 @@ func (helper *NatsHelper) onConnected() error {
 
 func (helper *NatsHelper) Close() {
 	helper.unsubscribe()
-	if helper.nc != nil && helper.nc.IsConnected() {
-		if err := helper.nc.Drain(); err != nil {
+	if helper.Nc != nil && helper.Nc.IsConnected() {
+		if err := helper.Nc.Drain(); err != nil {
 			klog.Errorf("failed to drain: %v", err)
 		}
-		helper.nc.Close()
+		helper.Nc.Close()
 	}
 }
 
 // AddNatsHandler 添加消息处理器
-// 相当于调用JSON连接的Subscribe，主要是多了一个自动Unsubscribe
-func (helper *NatsHelper) AddNatsHandler(subject string, handler nats.Handler) error {
-	sub, err := helper.ec.Subscribe(subject, handler)
+// 相当于调用连接的Subscribe，主要是多了一个自动Unsubscribe
+func (helper *NatsHelper) AddNatsHandler(subject string, handler nats.MsgHandler) error {
+	sub, err := helper.Nc.Subscribe(subject, handler)
+	if err != nil {
+		klog.Errorf("failed to subscribe to %s: %v", subject, err.Error())
+		return err
+	}
+	helper.subs = append(helper.subs, sub)
+	return nil
+}
+
+func (helper *NatsHelper) AddNatsJSONHandler(subject string, handler nats.Handler) error {
+	sub, err := helper.Ec.Subscribe(subject, handler)
 	if err != nil {
 		klog.Errorf("failed to subscribe to %s: %v", subject, err.Error())
 		return err
