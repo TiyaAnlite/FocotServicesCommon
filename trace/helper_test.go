@@ -2,7 +2,6 @@ package trace
 
 import (
 	"context"
-	"github.com/TiyaAnlite/FocotServicesCommon/envx"
 	"go.opentelemetry.io/otel/attribute"
 	"sync"
 	"testing"
@@ -12,7 +11,6 @@ import (
 func TestServiceTraceHelper(t *testing.T) {
 	ctx := context.Background()
 	cfg := &ServiceTraceHelper{}
-	envx.MustLoadEnv(cfg)
 	cfg.SetupTrace()
 	defer cfg.Shutdown(ctx)
 	tracer := cfg.NewTracer()
