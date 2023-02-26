@@ -116,6 +116,11 @@ func (helper *NatsHelper) AddNatsJSONHandler(subject string, handler nats.Handle
 	return nil
 }
 
+// AddSubscribe 添加自定义的订阅主题，主要用于统一Unsubscribe
+func (helper *NatsHelper) AddSubscribe(sub *nats.Subscription) {
+	helper.subs = append(helper.subs, sub)
+}
+
 func (helper *NatsHelper) unsubscribe() {
 	for _, sub := range helper.subs {
 		if err := sub.Unsubscribe(); err != nil {
