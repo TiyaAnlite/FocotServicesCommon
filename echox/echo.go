@@ -3,8 +3,8 @@ package echox
 import (
 	"fmt"
 	"github.com/go-playground/validator"
-	"github.com/labstack/echo"
-	"github.com/labstack/echo/middleware"
+	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v4/middleware"
 	"net/http"
 	"time"
 )
