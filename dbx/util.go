@@ -10,7 +10,7 @@ import (
 type DBProvider func(cfg *DBConfig) gorm.Dialector
 
 func MySQLProvider(cfg *DBConfig) gorm.Dialector {
-	dsn := fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?parseTime=True",
+	dsn := fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?charset=utf8mb4&parseTime=True&loc=Local",
 		cfg.DBUser, cfg.DBPass, cfg.DBHost, cfg.DBPort, cfg.DBName)
 	return mysql.Open(dsn)
 }
