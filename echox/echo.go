@@ -10,13 +10,16 @@ import (
 )
 
 type EchoConfig struct {
-	Address    string        `env:"ADDRESS"`
-	Port       int           `env:"PORT" envDefault:"8080"`
-	JwtSecret  string        `env:"JWT_SECRET"`
-	JwtExpire  time.Duration `env:"JWT_EXPIRE" envDefault:"24h"`
-	BodyLimit  string        `env:"BODY_LIMIT"`
-	UseUptime  bool          `env:"ECHO_UPTIME"`
-	UptimePath string        `env:"ECHO_UPTIME_PATH" envDefault:"/uptime"`
+	Address        string        `env:"ADDRESS"`
+	Port           int           `env:"PORT" envDefault:"8080"`
+	JwtSecret      string        `env:"JWT_SECRET"`
+	JwtExpire      time.Duration `env:"JWT_EXPIRE" envDefault:"24h"`
+	BodyLimit      string        `env:"BODY_LIMIT"`
+	UseUptime      bool          `env:"ECHO_UPTIME"`
+	UseHealthCheck bool          `env:"ECHO_HEALTH" envDefault:"true"`
+	UseLogger      bool          `env:"ECHO_LOGGER" envDefault:"true"`
+	UserRecover    bool          `env:"ECHO_RECOVER" envDefault:"true"`
+	UptimePath     string        `env:"ECHO_UPTIME_PATH" envDefault:"/uptime"`
 }
 
 type defaultValidator struct {
@@ -30,7 +33,7 @@ func (v *defaultValidator) Validate(i interface{}) error {
 	return nil
 }
 
-func Run(cfg EchoConfig, setupRoutes func(*echo.Echo)) {
+func Run(cfg *EchoConfig, setupRoutes func(*echo.Echo)) {
 	e := echo.New()
 	e.HideBanner = true
 	e.Validator = &defaultValidator{
@@ -38,13 +41,20 @@ func Run(cfg EchoConfig, setupRoutes func(*echo.Echo)) {
 	}
 	startAt := time.Now()
 
-	e.Use(middleware.Logger())
-	e.Use(middleware.Recover())
+	if cfg.UseLogger {
+		e.Use(middleware.Logger())
+	}
+	if cfg.UserRecover {
+		e.Use(middleware.Recover())
+	}
 
 	// 健康检查
-	e.GET("/", func(c echo.Context) error {
-		return c.String(http.StatusOK, "ok")
-	})
+	if cfg.UseHealthCheck {
+		e.GET("/", func(c echo.Context) error {
+			return c.String(http.StatusOK, "ok")
+		})
+	}
+
 	if cfg.UseUptime {
 		e.GET(cfg.UptimePath, func(c echo.Context) error {
 			return c.JSON(http.StatusOK, echo.Map{
