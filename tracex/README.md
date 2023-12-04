@@ -65,12 +65,12 @@ tracer := helper.NewTracer()
 ctxMain, main := tracer.Start(ctx, "main")  // Use this ctx
 defer main.End()
 wg := sync.WaitGroup{}
+wg.Add(1)
 
 go func() {
+    defer wg.Done()
     _, go1 := tracer.Start(ctx, "go1-of-main")
     defer go1.End()
-    wg.Add(1)
-    defer wg.Done()
     // ...do something
 }()
 

@@ -5,21 +5,24 @@ import (
 	"github.com/go-playground/validator"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
+	"go.opentelemetry.io/contrib/instrumentation/github.com/labstack/echo/otelecho"
 	"net/http"
 	"time"
 )
 
 type EchoConfig struct {
-	Address        string        `env:"ADDRESS"`
-	Port           int           `env:"PORT" envDefault:"8080"`
-	JwtSecret      string        `env:"JWT_SECRET"`
-	JwtExpire      time.Duration `env:"JWT_EXPIRE" envDefault:"24h"`
-	BodyLimit      string        `env:"BODY_LIMIT"`
-	UseUptime      bool          `env:"ECHO_UPTIME"`
-	UseHealthCheck bool          `env:"ECHO_HEALTH" envDefault:"true"`
-	UseLogger      bool          `env:"ECHO_LOGGER" envDefault:"true"`
-	UserRecover    bool          `env:"ECHO_RECOVER" envDefault:"true"`
-	UptimePath     string        `env:"ECHO_UPTIME_PATH" envDefault:"/uptime"`
+	Address           string        `env:"ADDRESS"`
+	Port              int           `env:"PORT" envDefault:"8080"`
+	JwtSecret         string        `env:"JWT_SECRET"`
+	JwtExpire         time.Duration `env:"JWT_EXPIRE" envDefault:"24h"`
+	BodyLimit         string        `env:"BODY_LIMIT"`
+	UseUptime         bool          `env:"ECHO_UPTIME"`
+	UseHealthCheck    bool          `env:"ECHO_HEALTH" envDefault:"true"`
+	UseTelemetry      bool          `env:"ECHO_TELEMETRY"`
+	UseLogger         bool          `env:"ECHO_LOGGER" envDefault:"true"`
+	UserRecover       bool          `env:"ECHO_RECOVER" envDefault:"true"`
+	UptimePath        string        `env:"ECHO_UPTIME_PATH" envDefault:"/uptime"`
+	TelemetryHostName string        `env:"ECHO_TELEMETRY_HOSTNAME" envDefault:"Echo.dev"`
 }
 
 type defaultValidator struct {
@@ -62,6 +65,10 @@ func Run(cfg *EchoConfig, setupRoutes func(*echo.Echo)) {
 				"uptime":  time.Since(startAt).String(),
 			})
 		})
+	}
+
+	if cfg.UseTelemetry {
+		e.Use(otelecho.Middleware(cfg.TelemetryHostName))
 	}
 
 	if cfg.BodyLimit != "" {
