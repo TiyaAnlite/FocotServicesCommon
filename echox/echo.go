@@ -6,6 +6,7 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	"go.opentelemetry.io/contrib/instrumentation/github.com/labstack/echo/otelecho"
+	"k8s.io/klog/v2"
 	"net/http"
 	"time"
 )
@@ -67,16 +68,17 @@ func Run(cfg *EchoConfig, setupRoutes func(*echo.Echo)) {
 		})
 	}
 
-	if cfg.UseTelemetry {
-		e.Use(otelecho.Middleware(cfg.TelemetryHostName))
-	}
-
 	if cfg.BodyLimit != "" {
 		e.Use(middleware.BodyLimit(cfg.BodyLimit))
 	}
 
 	if setupRoutes != nil {
 		setupRoutes(e)
+	}
+
+	if cfg.UseTelemetry {
+		klog.Info("Echo telemetry on")
+		e.Use(otelecho.Middleware(cfg.TelemetryHostName))
 	}
 
 	e.Logger.Fatal(e.Start(fmt.Sprintf("%s:%d", cfg.Address, cfg.Port)))

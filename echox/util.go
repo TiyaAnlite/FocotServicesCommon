@@ -6,6 +6,7 @@ import (
 	"github.com/labstack/echo/v4"
 	"go.opentelemetry.io/contrib/instrumentation/github.com/labstack/echo/otelecho"
 	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 	"net/http"
 	"time"
@@ -75,8 +76,8 @@ func Tracer() trace.Tracer {
 }
 
 // RootTracer 从上下文中生成追踪器Span，并自动注入返回头部
-func RootTracer(c echo.Context, stepName string) (context.Context, trace.Span) {
-	childCtx, span := Tracer().Start(c.Request().Context(), stepName)
+func RootTracer(c echo.Context, spanName string) (context.Context, trace.Span) {
+	childCtx, span := Tracer().Start(c.Request().Context(), spanName, trace.WithAttributes(attribute.String("service.api.request_id", c.Request().Header.Get(echo.HeaderXRequestID))))
 	respHeader := c.Response().Header()
 	spanCtx := span.SpanContext()
 	if respHeader.Get("X-Trace-Id") == "" && spanCtx.HasTraceID() {
