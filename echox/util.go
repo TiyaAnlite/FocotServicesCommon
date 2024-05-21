@@ -17,9 +17,9 @@ import (
 
 // ResponseWrapper 外层返回Data结构
 type ResponseWrapper struct {
-	Code    int         `json:"code"`
-	Message string      `json:"message"`
-	Data    interface{} `json:"data,omitempty"`
+	Code    int    `json:"code"`
+	Message string `json:"message"`
+	Data    any    `json:"data,omitempty"`
 }
 
 // NormalResponse 常用返回
