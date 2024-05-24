@@ -67,5 +67,5 @@ func (*ServiceTraceHelper) Shutdown(ctx context.Context) {
 		return
 	}
 	klog.Info("Uptrace shutdown")
-	uptrace.Shutdown(ctx)
+	_ = uptrace.Shutdown(ctx)
 }
