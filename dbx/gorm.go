@@ -17,7 +17,7 @@ type DBConfig struct {
 	DBName      string `env:"DB_NAME,required" envDefault:"postgres"`
 	DBUser      string `env:"DB_USER,required" envDefault:"postgres"`
 	DBPass      string `env:"DB_PASS,required"`
-	DBTelemetry bool   `env:"DB_TELEMETRY"`
+	DBTelemetry bool   `env:"DB_TELEMETRY" envDefault:"true"`
 	DBDebug     bool   `env:"DB_DEBUG"`
 	DBInit      bool   `env:"DB_INIT"`
 }

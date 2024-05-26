@@ -77,7 +77,11 @@ func Tracer() trace.Tracer {
 
 // RootTracer 从上下文中生成追踪器Span，并自动注入返回头部
 func RootTracer(c echo.Context, spanName string) (context.Context, trace.Span) {
-	childCtx, span := Tracer().Start(c.Request().Context(), spanName, trace.WithAttributes(attribute.String("service.api.request_id", c.Request().Header.Get(echo.HeaderXRequestID))))
+	var attr []attribute.KeyValue
+	if requestId := c.Request().Header.Get(echo.HeaderXRequestID); requestId != "" {
+		attr = append(attr, attribute.String("service.api.request_id", requestId))
+	}
+	childCtx, span := Tracer().Start(c.Request().Context(), spanName, trace.WithAttributes(attr...))
 	respHeader := c.Response().Header()
 	spanCtx := span.SpanContext()
 	if respHeader.Get("X-Trace-Id") == "" && spanCtx.HasTraceID() {
