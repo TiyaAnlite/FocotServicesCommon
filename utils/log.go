@@ -18,7 +18,7 @@ const (
 	WarningLog = "WARNING"
 )
 
-func recordLog(ctx context.Context, severity string, message string) {
+func recordLog(ctx context.Context, prevDepth int, severity string, message string) {
 	funcName := "???"
 	pc, file, line, ok := runtime.Caller(2)
 	if !ok {
@@ -42,25 +42,36 @@ func recordLog(ctx context.Context, severity string, message string) {
 		attribute.String("code.filepath", file),
 		attribute.Int("code.lineno", line),
 	))
-	span.End()
 	switch severity {
 	case "INFO":
-		klog.InfoDepth(2, message)
+		klog.InfoDepth(prevDepth+2, message)
 	case "ERROR":
-		klog.ErrorDepth(2, message)
+		klog.ErrorDepth(prevDepth+2, message)
 	case "WARNING":
-		klog.WarningDepth(2, message)
+		klog.WarningDepth(prevDepth+2, message)
 	}
 }
 
-func InfoWithCtx(ctx context.Context, message string) {
-	recordLog(ctx, InfoLog, message)
+func InfoWithCtx(ctx context.Context, message string, prevDepth ...int) {
+	depth := 0
+	if len(prevDepth) > 0 {
+		depth = prevDepth[0]
+	}
+	recordLog(ctx, depth, InfoLog, message)
 }
 
-func WarningWithCtx(ctx context.Context, message string) {
-	recordLog(ctx, WarningLog, message)
+func WarningWithCtx(ctx context.Context, message string, prevDepth ...int) {
+	depth := 0
+	if len(prevDepth) > 0 {
+		depth = prevDepth[0]
+	}
+	recordLog(ctx, depth, WarningLog, message)
 }
 
-func ErrorWithCtx(ctx context.Context, message string) {
-	recordLog(ctx, ErrorLog, message)
+func ErrorWithCtx(ctx context.Context, message string, prevDepth ...int) {
+	depth := 0
+	if len(prevDepth) > 0 {
+		depth = prevDepth[0]
+	}
+	recordLog(ctx, depth, ErrorLog, message)
 }
