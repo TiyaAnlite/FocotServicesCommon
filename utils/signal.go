@@ -6,7 +6,11 @@ import (
 )
 
 func Wait4CtrlC() {
+	<-CtrlCChannel()
+}
+
+func CtrlCChannel() chan os.Signal {
 	ctrlc := make(chan os.Signal, 1)
 	signal.Notify(ctrlc, os.Interrupt)
-	<-ctrlc
+	return ctrlc
 }

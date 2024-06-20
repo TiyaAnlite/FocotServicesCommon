@@ -81,11 +81,18 @@ func RootTracer(c echo.Context, spanName string) (context.Context, trace.Span) {
 	if requestId := c.Request().Header.Get(echo.HeaderXRequestID); requestId != "" {
 		attr = append(attr, attribute.String("service.api.request_id", requestId))
 	}
-	childCtx, span := Tracer().Start(c.Request().Context(), spanName, trace.WithAttributes(attr...))
+	rootCtx := c.Request().Context()
+	childCtx, span := Tracer().Start(rootCtx, spanName, trace.WithAttributes(attr...))
 	respHeader := c.Response().Header()
-	spanCtx := span.SpanContext()
-	if respHeader.Get("X-Trace-Id") == "" && spanCtx.HasTraceID() {
-		respHeader.Set("X-Trace-Id", spanCtx.TraceID().String())
+	rootSpanCtx := trace.SpanFromContext(rootCtx).SpanContext()
+	if respHeader.Get("X-Trace-Id") == "" && rootSpanCtx.HasTraceID() {
+		respHeader.Set("X-Trace-Id", rootSpanCtx.TraceID().String())
 	}
 	return childCtx, span
+}
+
+// RootTracerNext 自动关闭并打开新追踪器Span上下文的快捷方法
+func RootTracerNext(prev trace.Span, c echo.Context, spanName string) (context.Context, trace.Span) {
+	prev.End()
+	return RootTracer(c, spanName)
 }
