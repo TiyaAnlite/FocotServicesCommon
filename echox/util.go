@@ -3,6 +3,9 @@ package echox
 import (
 	"context"
 	"fmt"
+	"github.com/TiyaAnlite/FocotServicesCommon/utils"
+	"github.com/golang-jwt/jwt/v5"
+	echojwt "github.com/labstack/echo-jwt/v4"
 	"github.com/labstack/echo/v4"
 	"go.opentelemetry.io/contrib/instrumentation/github.com/labstack/echo/otelecho"
 	"go.opentelemetry.io/otel"
@@ -10,8 +13,8 @@ import (
 	"go.opentelemetry.io/otel/trace"
 	"net/http"
 	"time"
+	"unsafe"
 
-	"github.com/golang-jwt/jwt"
 	"github.com/labstack/echo/v4/middleware"
 )
 
@@ -22,18 +25,27 @@ type ResponseWrapper struct {
 	Data    any    `json:"data,omitempty"`
 }
 
+// JwtClaims 默认JWT结构
+type JwtClaims struct {
+	UserId int `json:"u"`
+	jwt.RegisteredClaims
+}
+
 // NormalResponse 常用返回
 func NormalResponse(c echo.Context, data any) error {
+	trace.SpanFromContext(c.Request().Context()).SetAttributes(attribute.Int("http.service_code", http.StatusOK))
 	return c.JSON(http.StatusOK, &ResponseWrapper{Code: http.StatusOK, Data: data})
 }
 
 // NormalEmptyResponse 空返回
 func NormalEmptyResponse(c echo.Context) error {
+	trace.SpanFromContext(c.Request().Context()).SetAttributes(attribute.Int("http.service_code", http.StatusOK))
 	return c.JSON(http.StatusOK, &ResponseWrapper{Code: http.StatusOK})
 }
 
 // NormalErrorResponse 错误返回
 func NormalErrorResponse(c echo.Context, statusCode int, code int, message string) error {
+	trace.SpanFromContext(c.Request().Context()).SetAttributes(attribute.Int("http.service_code", code))
 	return c.JSON(statusCode, &ResponseWrapper{Code: code, Message: message})
 }
 
@@ -48,25 +60,46 @@ func CheckInput[T any](c echo.Context) (*T, error) {
 	return &input, nil
 }
 
-func JwtEnabled(cfg EchoConfig) bool {
+func JwtEnabled(cfg *EchoConfig) bool {
 	return cfg.JwtSecret != ""
 }
 
-func DefaultJwtConfig(cfg EchoConfig) middleware.JWTConfig {
+func DefaultJwtConfigOld(cfg EchoConfig) middleware.JWTConfig {
 	return middleware.JWTConfig{
 		SigningKey:  []byte(cfg.JwtSecret),
 		TokenLookup: "header:Authorization",
-		ErrorHandler: func(err error) error {
+		ErrorHandlerWithContext: func(err error, c echo.Context) error {
+			trace.SpanFromContext(c.Request().Context()).SetAttributes(attribute.Int("http.service_code", http.StatusUnauthorized))
 			return echo.NewHTTPError(http.StatusUnauthorized, fmt.Sprintf("未授权:%s\n", err.Error()))
 		},
 	}
 }
 
-func JwtExpireTS(cfg EchoConfig) int64 {
+func DefaultJwtConfig(cfg *EchoConfig) echojwt.Config {
+	return echojwt.Config{
+		SigningKey:    unsafe.Slice(unsafe.StringData(cfg.JwtSecret), len(cfg.JwtSecret)),
+		TokenLookup:   "header:Authorization",
+		SigningMethod: "HS256",
+		ContextKey:    "user",
+		ErrorHandler: func(c echo.Context, err error) error {
+			utils.WarningWithCtx(c.Request().Context(), err.Error())
+			return NormalErrorResponse(c, http.StatusUnauthorized, http.StatusUnauthorized, "未授权")
+		},
+		NewClaimsFunc: func(c echo.Context) jwt.Claims {
+			return &JwtClaims{}
+		},
+	}
+}
+
+func JwtMiddlewareWithDefaultConfig(cfg *EchoConfig) echo.MiddlewareFunc {
+	return echojwt.WithConfig(DefaultJwtConfig(cfg))
+}
+
+func JwtExpireTS(cfg *EchoConfig) int64 {
 	return time.Now().Add(cfg.JwtExpire).Unix()
 }
 
-func MakeJwtToken(cfg EchoConfig, claims jwt.MapClaims) (string, error) {
+func MakeJwtToken(cfg *EchoConfig, claims jwt.MapClaims) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	return token.SignedString([]byte(cfg.JwtSecret))
 }
