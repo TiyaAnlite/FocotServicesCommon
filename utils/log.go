@@ -7,6 +7,7 @@ import (
 	"k8s.io/klog/v2"
 	"runtime"
 	"strings"
+	"unsafe"
 )
 
 // These constants identify the log levels in order of increasing severity.
@@ -36,13 +37,19 @@ func recordLog(ctx context.Context, prevDepth int, severity string, message stri
 			}
 		}
 
-		span.AddEvent("log", trace.WithAttributes(
+		eventAttributes := []attribute.KeyValue{
 			attribute.String("log.severity", severity),
 			attribute.String("log.message", message),
 			attribute.String("code.function", funcName),
 			attribute.String("code.filepath", file),
 			attribute.Int("code.lineno", line),
-		))
+		}
+		if severity == ErrorLog {
+			stack := make([]byte, 4<<10) // default stack length: 4kb
+			length := runtime.Stack(stack, false)
+			eventAttributes = append(eventAttributes, attribute.String("exception.stacktrace", unsafe.String(unsafe.SliceData(stack[:length]), length)))
+		}
+		span.AddEvent("log", trace.WithAttributes(eventAttributes...))
 	}
 
 	switch severity {

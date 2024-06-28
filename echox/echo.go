@@ -127,8 +127,9 @@ func PanicRecover(next echo.HandlerFunc) echo.HandlerFunc {
 				// msg := fmt.Sprintf("[PANIC RECOVER] %v\n%s", err, stack[:length])
 				// c.Logger().Error(msg)
 				if span := trace.SpanFromContext(c.Request().Context()); span.IsRecording() {
-					span.RecordError(err, trace.WithStackTrace(true))
-					utils.WarningWithCtx(c.Request().Context(), fmt.Sprintf("[PANIC RECOVER] %s", err.Error()))
+					// ErrorWithCtx代替了RecordError中StackTrace的能力
+					// span.RecordError(err, trace.WithStackTrace(true))
+					utils.ErrorWithCtx(c.Request().Context(), fmt.Sprintf("[PANIC RECOVER] %s", err.Error()))
 				}
 				_ = NormalErrorResponse(c, http.StatusInternalServerError, http.StatusInternalServerError, "Internal Server Error")
 			}

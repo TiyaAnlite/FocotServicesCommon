@@ -10,6 +10,7 @@ import (
 	"go.opentelemetry.io/contrib/instrumentation/github.com/labstack/echo/otelecho"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
 	"net/http"
 	"time"
@@ -49,8 +50,12 @@ func NormalEmptyResponse(c echo.Context) error {
 
 // NormalErrorResponse 错误返回
 func NormalErrorResponse(c echo.Context, statusCode int, code int, message string) error {
+	// echo的封装返回只负责注入业务返回码和业务成功状态，关于错误栈的记录应该由相应的ErrorLog进行
 	if span := trace.SpanFromContext(c.Request().Context()); span.IsRecording() {
 		span.SetAttributes(attribute.Int("http.service_code", code))
+		if statusCode >= http.StatusInternalServerError {
+			span.SetStatus(codes.Error, http.StatusText(statusCode))
+		}
 	}
 	return c.JSON(statusCode, &ResponseWrapper{Code: code, Message: message})
 }
