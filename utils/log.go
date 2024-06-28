@@ -20,7 +20,7 @@ const (
 
 func recordLog(ctx context.Context, prevDepth int, severity string, message string) {
 	funcName := "???"
-	pc, file, line, ok := runtime.Caller(2)
+	pc, file, line, ok := runtime.Caller(prevDepth + 2)
 	if !ok {
 		file = "???"
 		line = 1
