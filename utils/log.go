@@ -19,29 +19,32 @@ const (
 )
 
 func recordLog(ctx context.Context, prevDepth int, severity string, message string) {
-	funcName := "???"
-	pc, file, line, ok := runtime.Caller(prevDepth + 2)
-	if !ok {
-		file = "???"
-		line = 1
-	}
-	if slash := strings.LastIndex(file, "/"); slash >= 0 {
-		file = file[slash+1:]
-	}
-	if f := runtime.FuncForPC(pc); f != nil {
-		funcName = f.Name()
-		if slash := strings.LastIndex(funcName, "/"); slash >= 0 {
-			funcName = funcName[slash+1:]
+	if span := trace.SpanFromContext(ctx); span.IsRecording() {
+		funcName := "???"
+		pc, file, line, ok := runtime.Caller(prevDepth + 2)
+		if !ok {
+			file = "???"
+			line = 1
 		}
+		if slash := strings.LastIndex(file, "/"); slash >= 0 {
+			file = file[slash+1:]
+		}
+		if f := runtime.FuncForPC(pc); f != nil {
+			funcName = f.Name()
+			if slash := strings.LastIndex(funcName, "/"); slash >= 0 {
+				funcName = funcName[slash+1:]
+			}
+		}
+
+		span.AddEvent("log", trace.WithAttributes(
+			attribute.String("log.severity", severity),
+			attribute.String("log.message", message),
+			attribute.String("code.function", funcName),
+			attribute.String("code.filepath", file),
+			attribute.Int("code.lineno", line),
+		))
 	}
-	span := trace.SpanFromContext(ctx)
-	span.AddEvent("log", trace.WithAttributes(
-		attribute.String("log.severity", severity),
-		attribute.String("log.message", message),
-		attribute.String("code.function", funcName),
-		attribute.String("code.filepath", file),
-		attribute.Int("code.lineno", line),
-	))
+
 	switch severity {
 	case "INFO":
 		klog.InfoDepth(prevDepth+2, message)

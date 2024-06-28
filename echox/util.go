@@ -33,19 +33,25 @@ type JwtClaims struct {
 
 // NormalResponse 常用返回
 func NormalResponse(c echo.Context, data any) error {
-	trace.SpanFromContext(c.Request().Context()).SetAttributes(attribute.Int("http.service_code", http.StatusOK))
+	if span := trace.SpanFromContext(c.Request().Context()); span.IsRecording() {
+		span.SetAttributes(attribute.Int("http.service_code", http.StatusOK))
+	}
 	return c.JSON(http.StatusOK, &ResponseWrapper{Code: http.StatusOK, Data: data})
 }
 
 // NormalEmptyResponse 空返回
 func NormalEmptyResponse(c echo.Context) error {
-	trace.SpanFromContext(c.Request().Context()).SetAttributes(attribute.Int("http.service_code", http.StatusOK))
+	if span := trace.SpanFromContext(c.Request().Context()); span.IsRecording() {
+		span.SetAttributes(attribute.Int("http.service_code", http.StatusOK))
+	}
 	return c.JSON(http.StatusOK, &ResponseWrapper{Code: http.StatusOK})
 }
 
 // NormalErrorResponse 错误返回
 func NormalErrorResponse(c echo.Context, statusCode int, code int, message string) error {
-	trace.SpanFromContext(c.Request().Context()).SetAttributes(attribute.Int("http.service_code", code))
+	if span := trace.SpanFromContext(c.Request().Context()); span.IsRecording() {
+		span.SetAttributes(attribute.Int("http.service_code", code))
+	}
 	return c.JSON(statusCode, &ResponseWrapper{Code: code, Message: message})
 }
 
