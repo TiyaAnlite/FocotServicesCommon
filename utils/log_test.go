@@ -26,6 +26,12 @@ func TestLogging(t *testing.T) {
 	tracer := otel.Tracer("LoggingUtils")
 	ctx, span := tracer.Start(ctx, "TestLogging")
 	defer span.End()
+	if span.SpanContext().HasTraceID() {
+		fmt.Printf("trace id is %s\n", span.SpanContext().TraceID().String())
+	}
+	if span.SpanContext().HasSpanID() {
+		fmt.Printf("span id is %s\n", span.SpanContext().SpanID().String())
+	}
 	testMsg := "testing: %s"
 	InfoWithCtx(ctx, fmt.Sprintf(testMsg, "info"))
 	WarningWithCtx(ctx, fmt.Sprintf(testMsg, "warning"))
