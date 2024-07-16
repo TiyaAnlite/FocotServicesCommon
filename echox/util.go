@@ -120,13 +120,14 @@ func Tracer() trace.Tracer {
 }
 
 // RootTracer 从上下文中生成追踪器Span，并自动注入返回头部
-func RootTracer(c echo.Context, spanName string) (context.Context, trace.Span) {
+func RootTracer(c echo.Context, spanName string, options ...trace.SpanStartOption) (context.Context, trace.Span) {
 	var attr []attribute.KeyValue
 	if requestId := c.Request().Header.Get(echo.HeaderXRequestID); requestId != "" {
 		attr = append(attr, attribute.String("service.api.request_id", requestId))
 	}
+	options = append(options, trace.WithAttributes(attr...))
 	rootCtx := c.Request().Context()
-	childCtx, span := Tracer().Start(rootCtx, spanName, trace.WithAttributes(attr...))
+	childCtx, span := Tracer().Start(rootCtx, spanName, options...)
 	respHeader := c.Response().Header()
 	rootSpanCtx := trace.SpanFromContext(rootCtx).SpanContext()
 	if respHeader.Get("X-Trace-Id") == "" && rootSpanCtx.HasTraceID() {
@@ -136,7 +137,7 @@ func RootTracer(c echo.Context, spanName string) (context.Context, trace.Span) {
 }
 
 // RootTracerNext 自动关闭并打开新追踪器Span上下文的快捷方法
-func RootTracerNext(prev trace.Span, c echo.Context, spanName string) (context.Context, trace.Span) {
+func RootTracerNext(prev trace.Span, c echo.Context, spanName string, options ...trace.SpanStartOption) (context.Context, trace.Span) {
 	prev.End()
-	return RootTracer(c, spanName)
+	return RootTracer(c, spanName, options...)
 }
