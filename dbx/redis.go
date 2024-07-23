@@ -3,16 +3,18 @@ package dbx
 import (
 	"context"
 	"fmt"
+	"github.com/redis/go-redis/extra/redisotel/v9"
 	"github.com/redis/go-redis/v9"
 	"k8s.io/klog/v2"
 	"time"
 )
 
 type RedisConfig struct {
-	Host string `json:"host" env:"REDIS_HOST,required" envDefault:"localhost"`
-	Port int    `json:"port" env:"REDIS_PORT,required" envDefault:"6379"`
-	Pass string `json:"pass" env:"REDIS_PASS"`
-	DB   int    `json:"db" env:"REDIS_DB"`
+	Host      string `json:"host" env:"REDIS_HOST,required" envDefault:"localhost"`
+	Port      int    `json:"port" env:"REDIS_PORT,required" envDefault:"6379"`
+	Pass      string `json:"pass" env:"REDIS_PASS"`
+	DB        int    `json:"db" env:"REDIS_DB"`
+	Telemetry bool   `env:"REDIS_TELEMETRY" envDefault:"true"`
 }
 
 type RedisHelper struct {
@@ -33,6 +35,15 @@ func (r *RedisHelper) Open(cfg *RedisConfig) error {
 	r.rdb = redis.NewClient(opt)
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	defer cancel()
+	if cfg.Telemetry {
+		klog.Info("RedisHelper telemetry on")
+		if err := redisotel.InstrumentTracing(r.rdb); err != nil {
+			return fmt.Errorf("failed to instrument tracing: %s", err.Error())
+		}
+		if err := redisotel.InstrumentMetrics(r.rdb); err != nil {
+			return fmt.Errorf("failed to instrument metrics: %s", err.Error())
+		}
+	}
 	err := r.rdb.Ping(ctx).Err()
 	if err != nil {
 		return fmt.Errorf("failed to connect redis: %s", err.Error())
