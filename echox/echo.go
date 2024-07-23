@@ -15,6 +15,7 @@ import (
 	"net/http"
 	"runtime"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -33,7 +34,8 @@ type EchoConfig struct {
 	UptimePath           string        `env:"ECHO_UPTIME_PATH" envDefault:"/uptime"`
 	TelemetryHostName    string        `env:"ECHO_TELEMETRY_HOSTNAME" envDefault:"Echo.dev"`
 
-	server *echo.Echo
+	server      *echo.Echo
+	paddingLock *sync.RWMutex
 }
 
 type defaultValidator struct {
@@ -90,6 +92,10 @@ func Run(cfg *EchoConfig, setupRoutes func(*echo.Echo)) {
 		e.Use(middleware.BodyLimit(cfg.BodyLimit))
 	}
 
+	if cfg.paddingLock != nil {
+		e.Use(RequestLock(cfg.paddingLock))
+	}
+
 	if setupRoutes != nil {
 		setupRoutes(e)
 	}
@@ -100,6 +106,14 @@ func Run(cfg *EchoConfig, setupRoutes func(*echo.Echo)) {
 	if !errors.Is(ret, http.ErrServerClosed) {
 		e.Logger.Fatal(ret)
 	}
+}
+
+// AddRequestLock 添加绑定请求的读写锁以便进行并发控制
+func AddRequestLock(cfg *EchoConfig) *sync.RWMutex {
+	if cfg.paddingLock == nil {
+		cfg.paddingLock = &sync.RWMutex{}
+	}
+	return cfg.paddingLock
 }
 
 // Shutdown 优雅关闭服务端
@@ -158,5 +172,15 @@ func RequestIdInjector(next echo.HandlerFunc) echo.HandlerFunc {
 			span.SetAttributes(attribute.String("http.request_id", requestId))
 		}
 		return next(c)
+	}
+}
+
+func RequestLock(lock *sync.RWMutex) func(next echo.HandlerFunc) echo.HandlerFunc {
+	return func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			lock.RLock()
+			defer lock.RUnlock()
+			return next(c)
+		}
 	}
 }
