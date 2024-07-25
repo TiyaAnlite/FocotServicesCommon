@@ -35,7 +35,7 @@ type EchoConfig struct {
 	TelemetryHostName    string        `env:"ECHO_TELEMETRY_HOSTNAME" envDefault:"Echo.dev"`
 
 	server      *echo.Echo
-	paddingLock *sync.RWMutex
+	pendingLock *sync.RWMutex
 }
 
 type defaultValidator struct {
@@ -92,8 +92,8 @@ func Run(cfg *EchoConfig, setupRoutes func(*echo.Echo)) {
 		e.Use(middleware.BodyLimit(cfg.BodyLimit))
 	}
 
-	if cfg.paddingLock != nil {
-		e.Use(RequestLock(cfg.paddingLock))
+	if cfg.pendingLock != nil {
+		e.Use(RequestLock(cfg.pendingLock))
 	}
 
 	if setupRoutes != nil {
@@ -110,10 +110,10 @@ func Run(cfg *EchoConfig, setupRoutes func(*echo.Echo)) {
 
 // AddRequestLock 添加绑定请求的读写锁以便进行并发控制
 func AddRequestLock(cfg *EchoConfig) *sync.RWMutex {
-	if cfg.paddingLock == nil {
-		cfg.paddingLock = &sync.RWMutex{}
+	if cfg.pendingLock == nil {
+		cfg.pendingLock = &sync.RWMutex{}
 	}
-	return cfg.paddingLock
+	return cfg.pendingLock
 }
 
 // Shutdown 优雅关闭服务端

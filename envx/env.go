@@ -28,7 +28,7 @@ type rdbEnvLoaderOptions struct {
 	envOptions          env.Options
 	autoLoadProjectName string
 	notifyMq            *nats.Conn
-	paddingLock         *sync.RWMutex
+	pendingLock         *sync.RWMutex
 	ErrorAtNotFound     bool
 	loadTimeout         time.Duration
 }
@@ -45,7 +45,7 @@ func WithRdbEnvAutoLoad(projectName string, mq *nats.Conn, lock *sync.RWMutex) R
 	return func(options *rdbEnvLoaderOptions) {
 		options.autoLoadProjectName = projectName
 		options.notifyMq = mq
-		options.paddingLock = lock
+		options.pendingLock = lock
 	}
 }
 
@@ -84,7 +84,7 @@ func LoadEnvFromRedis(v any, r *redis.Client, key string, option ...RdbEnvLoader
 		return err
 	}
 	// auto load
-	if opt.autoLoadProjectName != "" && opt.notifyMq != nil && opt.paddingLock != nil {
+	if opt.autoLoadProjectName != "" && opt.notifyMq != nil && opt.pendingLock != nil {
 		subjectPrefix := fmt.Sprintf("%s.%s", "envAutoLoad", opt.autoLoadProjectName)
 		handler := envAutoReloadHandler(v, key, r, subjectPrefix, opt)
 		if _, err := opt.notifyMq.Subscribe(subjectPrefix, handler); err != nil {
@@ -106,8 +106,8 @@ func MustLoadEnvFromRedis(v any, r *redis.Client, key string, option ...RdbEnvLo
 
 func envAutoReloadHandler(v any, key string, r *redis.Client, subjectPrefix string, opt *rdbEnvLoaderOptions) func(msg *nats.Msg) {
 	return func(msg *nats.Msg) {
-		opt.paddingLock.Lock()
-		defer opt.paddingLock.Unlock()
+		opt.pendingLock.Lock()
+		defer opt.pendingLock.Unlock()
 		ctx, cancel := context.WithTimeout(context.Background(), opt.loadTimeout)
 		defer cancel()
 		subject := strings.TrimPrefix(msg.Subject, subjectPrefix)
